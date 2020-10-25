@@ -1,0 +1,36 @@
+body {
+    color: #bbb;
+    background: #333;
+    font-family: system-ui;
+    margin: 0;
+    padding-bottom: 60px;
+}
+
+.canvas-stage {
+    position: relative;
+}
+
+.canvas-stage canvas {
+    position: absolute;
+}
+
+#tooltip {
+    align-items: center;
+    background-color: white;
+    border-right: 1px solid #888;
+    border-top: 1px solid #888;
+    bottom: 0;
+    color: #111;
+    display: flex;
+    font-family: monospace;
+    font-size: 22px;
+    font-weight: bold;
+    height: 50px;
+    justify-content: center;
+    left: 0;
+    opacity: 0.7;
+    position: fixed;
+    text-shadow: 1px 1px 2px #ccc;
+    width: 150px;
+    z-index: 1;
+}
