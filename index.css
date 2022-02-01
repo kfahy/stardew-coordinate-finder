@@ -28,9 +28,10 @@ body {
     height: 50px;
     justify-content: center;
     left: 0;
+    min-width: 128px;
     opacity: 0.7;
+    padding: 0 8px;
     position: fixed;
     text-shadow: 1px 1px 2px #ccc;
-    width: 150px;
     z-index: 1;
 }

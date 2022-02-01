@@ -1,3 +1,5 @@
+const coloredSpots = {};
+
 function drawBackgroundImage(backgroundCanvas, src) {
     return new Promise(resolve => {
         const image = new Image();
@@ -47,6 +49,7 @@ function initMap(title, src) {
         const frontCanvas = document.createElement('canvas');
         frontCanvas.width = width;
         frontCanvas.height = height;
+        frontCanvas.id = `${title}-front-canvas`;
         stageDiv.appendChild(frontCanvas);
 
         const ctx = frontCanvas.getContext('2d');
@@ -54,7 +57,8 @@ function initMap(title, src) {
         frontCanvas.addEventListener('mousemove', ({offsetX, offsetY}) => {
             const x = Math.floor(offsetX / 16);
             const y = Math.floor(offsetY / 16);
-            tooltip.innerText = `(${x},${y})`;
+            const coloredSpot = coloredSpots[title]?.[x]?.[y];
+            tooltip.innerText = `${coloredSpot ? `${coloredSpot} ` : ''}(${x},${y})`;
 
             if (highlightedCoord) {
                 const [oldX, oldY] = highlightedCoord;
@@ -62,7 +66,14 @@ function initMap(title, src) {
                     // User didn't move out of the square, so keep old highlight.
                     return;
                 }
+
                 ctx.clearRect(oldX * 16 + 1, oldY * 16 + 1, 14, 14);
+
+                // This spot was already occupied, so re-color it.
+                if (coloredSpots[title]?.[oldX]?.[oldY]) {
+                    ctx.fillStyle = '#ff0a';
+                    ctx.fillRect(oldX * 16 + 1, oldY * 16 + 1, 14, 14);
+                }
             }
 
             ctx.fillStyle = '#fffa';
@@ -70,6 +81,53 @@ function initMap(title, src) {
             highlightedCoord = [x, y];
         });
     });
+}
+
+function colorSpots(spots) {
+    const spotKeys = Object.keys(spots);
+    for (const spotKey of spotKeys) {
+        const spot = spots[spotKey];
+
+        const [mapName, xStr, yStr, , modifier] = spot.split(' ');
+        const x = Number(xStr);
+        const y = Number(yStr);
+        const frontCanvas = document.querySelector(`#${mapName}-front-canvas`);
+        if (!frontCanvas) {
+            console.error('bad map name in spots.json:', mapName);
+            return;
+        }
+
+        let squareX = 1;
+        let squareY = 1;
+        if (modifier?.startsWith('square_')) {
+            [ , squareX, squareY] = modifier.split('_');
+            squareX = Number(squareX);
+            squareY = Number(squareY);
+        }
+        const initialX = x - Math.floor(squareX / 2);
+        const initialY = y - Math.floor(squareY / 2);
+
+        for (let offsetX = 0; offsetX < squareX; offsetX++) {
+            for (let offsetY = 0; offsetY < squareY; offsetY++) {
+                const finalX = initialX + offsetX;
+                const finalY = initialY + offsetY;
+                if (!coloredSpots[mapName]) {
+                    coloredSpots[mapName] = {};
+                }
+                if (!coloredSpots[mapName][finalX]) {
+                    coloredSpots[mapName][finalX] = {};
+                }
+                if (coloredSpots[mapName][finalX][finalY]) {
+                    console.error(`Spot occuped for ${mapName} ${finalX} ${finalY}`);
+                }
+                coloredSpots[mapName][finalX][finalY] = spotKey;
+
+                const ctx = frontCanvas.getContext('2d');
+                ctx.fillStyle = '#ff0a';
+                ctx.fillRect(finalX * 16 + 1, finalY * 16 + 1, 14, 14);
+            }
+        }
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -111,4 +169,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const title = mapFilename.match(titleRegex)[1];
         initMap(title, mapFilename);
     }
+
+    // Set up file drop handler for filling in squares based on spots.json.
+    document.body.addEventListener('dragover', (event) => {
+        event.preventDefault();
+    });
+
+    document.body.addEventListener('drop', (event) => {
+        event.preventDefault();
+
+        if (event.dataTransfer.files.length !== 1) {
+            return;
+        }
+
+        event.dataTransfer.files[0].text().then((text) => {
+            const { spots } = JSON.parse(text);
+            colorSpots(spots);
+        });
+    });
 });
