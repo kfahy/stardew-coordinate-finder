@@ -25,12 +25,12 @@ body {
     font-family: monospace;
     font-size: 22px;
     font-weight: bold;
-    height: 50px;
     justify-content: center;
     left: 0;
+    min-height: 32px;
     min-width: 128px;
     opacity: 0.7;
-    padding: 0 8px;
+    padding: 4px 8px;
     position: fixed;
     text-shadow: 1px 1px 2px #ccc;
     z-index: 1;

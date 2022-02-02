@@ -58,7 +58,8 @@ function initMap(title, src) {
             const x = Math.floor(offsetX / 16);
             const y = Math.floor(offsetY / 16);
             const coloredSpot = coloredSpots[title]?.[x]?.[y];
-            tooltip.innerText = `${coloredSpot ? `${coloredSpot} ` : ''}(${x},${y})`;
+            const coloredSpotText = coloredSpot ? `${coloredSpot.join(', ')} ` : '';
+            tooltip.innerText = `${coloredSpotText}(${x},${y})`;
 
             if (highlightedCoord) {
                 const [oldX, oldY] = highlightedCoord;
@@ -117,14 +118,17 @@ function colorSpots(spots) {
                 if (!coloredSpots[mapName][finalX]) {
                     coloredSpots[mapName][finalX] = {};
                 }
-                if (coloredSpots[mapName][finalX][finalY]) {
-                    console.error(`Spot occuped for ${mapName} ${finalX} ${finalY}`);
+                if (!coloredSpots[mapName][finalX][finalY]) {
+                    coloredSpots[mapName][finalX][finalY] = [];
                 }
-                coloredSpots[mapName][finalX][finalY] = spotKey;
+                const spotAlreadyColored = coloredSpots[mapName][finalX][finalY].length;
+                coloredSpots[mapName][finalX][finalY].push(spotKey);
 
-                const ctx = frontCanvas.getContext('2d');
-                ctx.fillStyle = '#ff0a';
-                ctx.fillRect(finalX * 16 + 1, finalY * 16 + 1, 14, 14);
+                if (!spotAlreadyColored) {
+                    const ctx = frontCanvas.getContext('2d');
+                    ctx.fillStyle = '#ff0a';
+                    ctx.fillRect(finalX * 16 + 1, finalY * 16 + 1, 14, 14);
+                }
             }
         }
     }
