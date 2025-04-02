@@ -84,7 +84,49 @@ function initMap(title, src) {
     });
 }
 
-function colorSpots(spots) {
+function colorSpot(mapName, x, y, squareX, squareY, spotKey) {
+    const frontCanvas = document.querySelector(`#${mapName}-front-canvas`);
+    if (!frontCanvas) {
+        console.error('bad map name:', mapName);
+        return;
+    }
+    x = Number(x);
+    y = Number(y);
+    squareX = Number(squareX) || 1;
+    squareY = Number(squareY) || 1;
+
+    const initialX = x - Math.floor(squareX / 2);
+    const initialY = y - Math.floor(squareY / 2);
+
+    for (let offsetX = 0; offsetX < squareX; offsetX++) {
+        for (let offsetY = 0; offsetY < squareY; offsetY++) {
+            const finalX = initialX + offsetX;
+            const finalY = initialY + offsetY;
+            if (!coloredSpots[mapName]) {
+                coloredSpots[mapName] = {};
+            }
+            if (!coloredSpots[mapName][finalX]) {
+                coloredSpots[mapName][finalX] = {};
+            }
+            if (!coloredSpots[mapName][finalX][finalY]) {
+                coloredSpots[mapName][finalX][finalY] = [];
+            }
+            const selectedSpot = coloredSpots[mapName][finalX][finalY];
+            const spotAlreadyColored = selectedSpot.length;
+            if (!selectedSpot.includes(spotKey)) {
+                selectedSpot.push(spotKey);
+            }
+
+            if (!spotAlreadyColored) {
+                const ctx = frontCanvas.getContext('2d');
+                ctx.fillStyle = '#ff0a';
+                ctx.fillRect(finalX * 16 + 1, finalY * 16 + 1, 14, 14);
+            }
+        }
+    }
+}
+
+function colorSpotsRandomizer(spots) {
     const spotKeys = Object.keys(spots);
     for (const spotKey of spotKeys) {
         const spot = spots[spotKey];
@@ -105,31 +147,22 @@ function colorSpots(spots) {
             squareX = Number(squareX);
             squareY = Number(squareY);
         }
-        const initialX = x - Math.floor(squareX / 2);
-        const initialY = y - Math.floor(squareY / 2);
 
-        for (let offsetX = 0; offsetX < squareX; offsetX++) {
-            for (let offsetY = 0; offsetY < squareY; offsetY++) {
-                const finalX = initialX + offsetX;
-                const finalY = initialY + offsetY;
-                if (!coloredSpots[mapName]) {
-                    coloredSpots[mapName] = {};
-                }
-                if (!coloredSpots[mapName][finalX]) {
-                    coloredSpots[mapName][finalX] = {};
-                }
-                if (!coloredSpots[mapName][finalX][finalY]) {
-                    coloredSpots[mapName][finalX][finalY] = [];
-                }
-                const spotAlreadyColored = coloredSpots[mapName][finalX][finalY].length;
-                coloredSpots[mapName][finalX][finalY].push(spotKey);
+        colorSpot(mapName, x, y, squareX, squareY, spotKey);
+    }
+}
 
-                if (!spotAlreadyColored) {
-                    const ctx = frontCanvas.getContext('2d');
-                    ctx.fillStyle = '#ff0a';
-                    ctx.fillRect(finalX * 16 + 1, finalY * 16 + 1, 14, 14);
-                }
-            }
+
+function colorSpotsSchedule(villagerName, scheduleStrings) {
+    const scheduleRegex = /(?:^|\/)\d+ (?<mapName>\w+) (?<x>\d+) (?<y>\d+) ?[0-3]? (square_(?<squareX>\d+)_(?<squareY>\d+))?/g;
+    for (const scheduleString of scheduleStrings) {
+        const getGroups = () => scheduleRegex.exec(scheduleString)?.groups;
+        let groups = getGroups();
+        while (groups) {
+            let { mapName, x, y, squareX, squareY } = groups;
+            colorSpot(mapName, x, y, squareX, squareY, villagerName);
+
+            groups = getGroups();
         }
     }
 }
@@ -179,16 +212,21 @@ document.addEventListener('DOMContentLoaded', () => {
         event.preventDefault();
     });
 
-    document.body.addEventListener('drop', (event) => {
+    const FILENAME_REGEX = /(?<villagerName>\w+)/;
+
+    document.body.addEventListener('drop', async (event) => {
         event.preventDefault();
 
-        if (event.dataTransfer.files.length !== 1) {
-            return;
-        }
+        for (const file of event.dataTransfer.files) {
+            const text = await file.text();
+            const parsedJson = JSON.parse(text);
+            if (parsedJson.spots) {
+                colorSpotsRandomizer(parsedJson.spots);
+            }
 
-        event.dataTransfer.files[0].text().then((text) => {
-            const { spots } = JSON.parse(text);
-            colorSpots(spots);
-        });
+            // Assume these are normal schedule files from the base game
+            const villagerName = FILENAME_REGEX.exec(file.name)?.groups?.villagerName;
+            colorSpotsSchedule(villagerName, Object.values(parsedJson));
+        }
     });
 });
